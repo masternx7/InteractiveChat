@@ -484,13 +484,13 @@ public class InteractiveChat extends JavaPlugin {
                 if (parsePAPIOnMainThread) {
                     for (Player player : Bukkit.getOnlinePlayers()) {
                         Scheduler.runTask(plugin, () -> {
-                            PlaceholderParser.parse(ICPlayerFactory.getICPlayer(player), usePlayerNameHoverText);
+                            PlaceholderParser.parseHoverText(ICPlayerFactory.getICPlayer(player), usePlayerNameHoverText);
                             PlaceholderParser.parse(ICPlayerFactory.getICPlayer(player), usePlayerNameClickValue);
                         }, player);
                     }
                 } else {
                     for (Player player : Bukkit.getOnlinePlayers()) {
-                        PlaceholderParser.parse(ICPlayerFactory.getICPlayer(player), usePlayerNameHoverText);
+                        PlaceholderParser.parseHoverText(ICPlayerFactory.getICPlayer(player), usePlayerNameHoverText);
                         PlaceholderParser.parse(ICPlayerFactory.getICPlayer(player), usePlayerNameClickValue);
                     }
                 }

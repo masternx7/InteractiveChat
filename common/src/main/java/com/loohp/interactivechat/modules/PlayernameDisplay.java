@@ -102,7 +102,7 @@ public class PlayernameDisplay {
         HoverEvent<?> hoverEvent;
         ClickEvent clickEvent;
         if (InteractiveChat.usePlayerNameHoverEnable) {
-            hoverEvent = HoverEvent.showText(PlaceholderParser.parse(player, InteractiveChat.usePlayerNameHoverText));
+            hoverEvent = HoverEvent.showText(PlaceholderParser.parseHoverText(player, InteractiveChat.usePlayerNameHoverText));
         } else {
             hoverEvent = null;
         }

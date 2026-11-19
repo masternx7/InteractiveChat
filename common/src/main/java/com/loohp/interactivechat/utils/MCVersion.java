@@ -184,11 +184,11 @@ public enum MCVersion {
     }
 
     public boolean isLegacy() {
-        return isOlderOrEqualTo(V1_12);
+        return this != UNSUPPORTED && isOlderOrEqualTo(V1_12);
     }
 
     public boolean isOld() {
-        return isOlderOrEqualTo(V1_8_4);
+        return this != UNSUPPORTED && isOlderOrEqualTo(V1_8_4);
     }
 
     public boolean isSupported() {
@@ -196,7 +196,7 @@ public enum MCVersion {
     }
 
     public boolean isLegacyRGB() {
-        return isOlderThan(V1_16);
+        return this != UNSUPPORTED && isOlderThan(V1_16);
     }
 
 }

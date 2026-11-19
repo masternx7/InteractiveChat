@@ -36,7 +36,7 @@ import java.util.regex.Pattern;
 
 public class ComponentStyling {
 
-    private static final Pattern LEGACY_PATTERN = Pattern.compile("§x(?:§[0-9a-fA-F]){6}|§[0-9a-fklmnor]");
+    private static final Pattern LEGACY_PATTERN = Pattern.compile("(?i)§x(?:§[0-9a-f]){6}|§[0-9a-fklmnor]");
 
     public static Component parseMiniMessage(String input) {
         Matcher matcher = LEGACY_PATTERN.matcher(input);

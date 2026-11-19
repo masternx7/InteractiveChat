@@ -30,7 +30,6 @@ import com.loohp.platformscheduler.Scheduler;
 import me.clip.placeholderapi.PlaceholderAPI;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
@@ -70,9 +69,26 @@ public class PlaceholderParser {
                 return Component.empty().children(matchedComponents);
             } else {
                 TextColor firstColor = ComponentStyling.getFirstColor(result.componentGroup());
-                return LegacyComponentSerializer.legacySection().deserialize(placeholderReplaced).colorIfAbsent(firstColor);
+                return InteractiveChatComponentSerializer.legacySection().deserialize(placeholderReplaced).colorIfAbsent(firstColor);
             }
         });
+    }
+
+    /**
+     * Parses placeholders in a component while keeping colour codes in the
+     * string domain. This is important for hover text: a placeholder can
+     * return a colour code by itself (for example a rank colour), and colour
+     * codes only affect the text that follows them. Parsing such values as
+     * separate components loses that relationship and makes the colour
+     * disappear.
+     */
+    public static Component parseHoverText(OfflineICPlayer offlineICPlayer, Component component) {
+        String serialized = InteractiveChatComponentSerializer.legacySection().serialize(component);
+        String parsed = parse(offlineICPlayer, serialized);
+        if (serialized.equals(parsed)) {
+            return component;
+        }
+        return InteractiveChatComponentSerializer.legacySection().deserialize(parsed);
     }
 
     public static String parse(OfflineICPlayer offlineICPlayer, String str) {
@@ -90,15 +106,20 @@ public class PlaceholderParser {
                 return "";
             } catch (TimeoutException e) {
                 ICPlayer player = offlineICPlayer.getPlayer();
+                String fallback;
                 if (player == null) {
-                    return PlaceholderAPI.setPlaceholders(offlineICPlayer.getLocalOfflinePlayer(), str);
+                    fallback = PlaceholderAPI.setPlaceholders(offlineICPlayer.getLocalOfflinePlayer(), str);
                 } else {
                     if (player.isLocal()) {
-                        return PlaceholderAPI.setPlaceholders(player.getLocalPlayer(), str);
+                        fallback = PlaceholderAPI.setPlaceholders(player.getLocalPlayer(), str);
                     } else {
-                        return "";
+                        fallback = "";
                     }
                 }
+                // The main thread took too long. The placeholder value still
+                // has to go through colour translation, otherwise hex colours
+                // and &-codes are sent to the client literally.
+                return ChatColorUtils.translateAlternateColorCodes('&', fallback);
             }
         } else {
             return parse0(offlineICPlayer, str);

@@ -615,7 +615,7 @@ public class V26_3 extends NMSWrapper {
             ChatDecorator chatDecorator = ((CraftServer) Bukkit.getServer()).getServer().getChatDecorator();
             ServerPlayer entityPlayer = ((CraftPlayer) player).getHandle();
             if (paperChatDecoratorDecorateMethod == null) {
-                return CompletableFuture.completedFuture(chatDecorator.decorate(entityPlayer, CraftChatMessage.fromJSON(GsonComponentSerializer.gson().serialize(message))));
+                return chatDecorator.decorate(entityPlayer, CraftChatMessage.fromJSON(GsonComponentSerializer.gson().serialize(message)));
             } else {
                 return (CompletableFuture<net.minecraft.network.chat.Component>) paperChatDecoratorDecorateMethod.invoke(chatDecorator, entityPlayer, null, CraftChatMessage.fromJSON(GsonComponentSerializer.gson().serialize(message)));
             }

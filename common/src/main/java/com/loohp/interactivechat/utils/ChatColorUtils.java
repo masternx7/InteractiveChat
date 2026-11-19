@@ -39,6 +39,8 @@ public class ChatColorUtils {
     public static final Pattern RGB_HEX_COLOR = Pattern.compile("#([0-9a-fA-F])([0-9a-fA-F])([0-9a-fA-F])([0-9a-fA-F])([0-9a-fA-F])([0-9a-fA-F])");
     public static final Pattern RGB_HEX_COLOR_1 = Pattern.compile("(?:&|" + COLOR_CHAR + ")x(?:&|" + COLOR_CHAR + ")([0-9a-fA-F])(?:&|" + COLOR_CHAR + ")([0-9a-fA-F])(?:&|" + COLOR_CHAR + ")([0-9a-fA-F])(?:&|" + COLOR_CHAR + ")([0-9a-fA-F])(?:&|" + COLOR_CHAR + ")([0-9a-fA-F])(?:&|" + COLOR_CHAR + ")([0-9a-fA-F])");
     public static final Pattern RGB_HEX_COLOR_2 = Pattern.compile("(?:&|" + COLOR_CHAR + ")#([0-9a-fA-F])([0-9a-fA-F])([0-9a-fA-F])([0-9a-fA-F])([0-9a-fA-F])([0-9a-fA-F])");
+    public static final Pattern RGB_HEX_COLOR_2_DOUBLE = Pattern.compile("(?:&|" + COLOR_CHAR + ")##([0-9a-fA-F])([0-9a-fA-F])([0-9a-fA-F])([0-9a-fA-F])([0-9a-fA-F])([0-9a-fA-F])");
+    public static final Pattern BARE_RGB_HEX_COLOR = Pattern.compile("(?<![<&])#([0-9a-fA-F])([0-9a-fA-F])([0-9a-fA-F])([0-9a-fA-F])([0-9a-fA-F])([0-9a-fA-F])");
     public static final Pattern STANDARD_COLOR_CODE = Pattern.compile("&([0-9A-Fa-fk-or])");
     public static final Set<ChatColor> FORMATTING_CODES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(ChatColor.MAGIC, ChatColor.BOLD, ChatColor.ITALIC, ChatColor.UNDERLINE, ChatColor.STRIKETHROUGH)));
 
@@ -127,14 +129,15 @@ public class ChatColorUtils {
 
     public static ChatColor getColor(String color) {
         if (color.length() >= 2 && color.charAt(1) != 'r') {
+            char code = Character.toLowerCase(color.charAt(1));
             if (color.length() == 2) {
-                return ChatColor.getByChar(color.charAt(1));
+                return ChatColor.getByChar(code);
             } else {
-                if (color.charAt(1) == 'x') {
+                if (code == 'x') {
                     String hex = "#" + color.charAt(3) + color.charAt(5) + color.charAt(7) + color.charAt(9) + color.charAt(11) + color.charAt(13);
                     return ChatColor.of(hex);
                 } else {
-                    return ChatColor.getByChar(color.charAt(1));
+                    return ChatColor.getByChar(code);
                 }
             }
         }
@@ -207,9 +210,31 @@ public class ChatColorUtils {
                 matcher.appendReplacement(sb, COLOR_CHAR + "x" + COLOR_CHAR + matcher.group(1) + COLOR_CHAR + matcher.group(2) + COLOR_CHAR + matcher.group(3) + COLOR_CHAR + matcher.group(4) + COLOR_CHAR + matcher.group(5) + COLOR_CHAR + matcher.group(6));
             }
             matcher.appendTail(sb);
+            matcher = RGB_HEX_COLOR_2_DOUBLE.matcher(text);
+            sb = new StringBuffer();
+            while (matcher.find()) {
+                matcher.appendReplacement(sb, COLOR_CHAR + "x" + COLOR_CHAR + matcher.group(1) + COLOR_CHAR + matcher.group(2) + COLOR_CHAR + matcher.group(3) + COLOR_CHAR + matcher.group(4) + COLOR_CHAR + matcher.group(5) + COLOR_CHAR + matcher.group(6));
+            }
+            matcher.appendTail(sb);
+            text = sb.toString();
+
             matcher = RGB_HEX_COLOR_2.matcher(sb.toString());
             sb = new StringBuffer();
             while (matcher.find()) {
+                matcher.appendReplacement(sb, COLOR_CHAR + "x" + COLOR_CHAR + matcher.group(1) + COLOR_CHAR + matcher.group(2) + COLOR_CHAR + matcher.group(3) + COLOR_CHAR + matcher.group(4) + COLOR_CHAR + matcher.group(5) + COLOR_CHAR + matcher.group(6));
+            }
+            matcher.appendTail(sb);
+            text = sb.toString();
+
+            // Support bare #RRGGBB hex colours out of the box, even if the
+            // AdditionalRGBFormats option is missing from an older config.
+            matcher = BARE_RGB_HEX_COLOR.matcher(text);
+            sb = new StringBuffer();
+            while (matcher.find()) {
+                if (isInsideMiniMessageTag(text, matcher.start())) {
+                    matcher.appendReplacement(sb, Matcher.quoteReplacement(matcher.group()));
+                    continue;
+                }
                 matcher.appendReplacement(sb, COLOR_CHAR + "x" + COLOR_CHAR + matcher.group(1) + COLOR_CHAR + matcher.group(2) + COLOR_CHAR + matcher.group(3) + COLOR_CHAR + matcher.group(4) + COLOR_CHAR + matcher.group(5) + COLOR_CHAR + matcher.group(6));
             }
             matcher.appendTail(sb);
@@ -223,6 +248,12 @@ public class ChatColorUtils {
                     if (matcher.groupCount() < 6) {
                         continue outer;
                     }
+                    if (isInsideMiniMessageTag(text, matcher.start())) {
+                        // Do not turn MiniMessage tags such as <#123456> into
+                        // legacy codes before MiniMessage gets to see them.
+                        matcher.appendReplacement(sb, Matcher.quoteReplacement(matcher.group()));
+                        continue;
+                    }
                     matcher.appendReplacement(sb, COLOR_CHAR + "x" + COLOR_CHAR + matcher.group(1) + COLOR_CHAR + matcher.group(2) + COLOR_CHAR + matcher.group(3) + COLOR_CHAR + matcher.group(4) + COLOR_CHAR + matcher.group(5) + COLOR_CHAR + matcher.group(6));
                 }
                 matcher.appendTail(sb);
@@ -233,12 +264,21 @@ public class ChatColorUtils {
         Matcher matcher = STANDARD_COLOR_CODE.matcher(text);
         StringBuffer sb = new StringBuffer();
         while (matcher.find()) {
-            matcher.appendReplacement(sb, COLOR_CHAR + matcher.group(1));
+            matcher.appendReplacement(sb, COLOR_CHAR + String.valueOf(Character.toLowerCase(matcher.group(1).charAt(0))));
         }
         matcher.appendTail(sb);
         text = sb.toString();
 
         return text;
+    }
+
+    private static boolean isInsideMiniMessageTag(String text, int index) {
+        int open = text.lastIndexOf('<', index);
+        if (open < 0) {
+            return false;
+        }
+        int close = text.indexOf('>', open);
+        return close >= 0 && index < close;
     }
 
     public static String escapeColorCharacters(char character, String str) {
